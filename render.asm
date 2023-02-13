@@ -8,6 +8,8 @@ column_num      equ 2d
 row_num         equ 5d
 column_sep_size equ 10d
 
+color_attr      equ 01001110b
+
 
 start:
     mov ax, 0b850h ; es points to video mem
@@ -20,20 +22,19 @@ start:
         mov dh, column_num                      ; for (dh = column_num; dh > 0; dh--)
         row_loop:
             mov si, offset Message              ; load Message string to screen
-            mov cx, message_len
-            load_loop:
-                mov dl, [si]
-                mov byte ptr es:[bx], dl
-                lea bx, [bx + 2]
-                inc si
-            loop load_loop
+            mov cx, message_len                 ;
+            load_loop:                          ;
+                mov dl, [si]                    ;
+                mov byte ptr es:[bx], dl        ;
+                lea bx, [bx + 2]                ;
+                inc si                          ;
+            loop load_loop                      ;
 
             lea bx, [bx - message_len * 2]      ; return bx to first char
 
             mov cx, message_len
-            mov dl, 00111110b ; Yellow on red background
+            mov dl, color_attr ; Yellow on red background
             color_loop:
-                xor dl, 11110000b ; Switch between two colors
                 mov byte ptr es:[bx+1], dl
                 lea bx, [bx + 2]
             loop color_loop
@@ -45,7 +46,7 @@ start:
         jne row_loop
 
 
-        lea bx, [bx + 160d - 2*(2*10 + 2*message_len)]   ; move bx to next row
+        lea bx, [bx + 160d - 2*(2*column_sep_size + 2*message_len)]   ; move bx to next row (160 -- row size, )
 
         mov al, byte ptr [free_mem]
         dec al
