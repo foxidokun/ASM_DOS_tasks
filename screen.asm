@@ -9,16 +9,36 @@ color_attr equ 4eh
 start:   
     call InputNumber
     mov di, offset free_mem
+    
     mov ax, bx
+    push bx
     call FormatDec
+    pop bx
+    mov di, offset free_mem + 6d ; 5 digits + '$'
+    
+    mov si, bx
+    call FormatHex
+    mov bx, si
+    mov di, offset free_mem + 6d + 8d ; + strlen (0xAAAAh$)
+
+    call FormatBin
 
     mov ax, 0b800h
     mov es, ax
     mov ah, color_attr
     mov si, offset free_mem
-    mov di, 160d * 5 + 80
+    mov di, 160d * 3 + 80
     mov bx, offset box_symbols
+    call StrPrint
 
+    mov bx, offset box_symbols
+    mov si, offset free_mem + 6d
+    mov di, 160d * 6 + 80
+    call StrPrint
+
+    mov bx, offset box_symbols
+    mov si, offset free_mem + 6d + 8d
+    mov di, 160d * 9 + 80
     call StrPrint
 
     mov ax, 4c00h
@@ -80,15 +100,16 @@ FormatDec proc
 
     @@format_loop:
         dec bx
+        xor dx, dx
         div si
         
-        lea cx, ['0' + bx]
-        mov es:[di + bx], cl
+        add dx, "0"
+        mov es:[di + bx], dl
 
         test bx, bx
     jne @@format_loop
 
-    mov [di + 5], "$"
+    mov byte ptr [di + 5], "$"
 
     ret
 
