@@ -9,7 +9,8 @@ color_attr equ 4eh
 start:   
     call InputNumber
     mov di, offset free_mem
-    call FormatHex
+    mov ax, bx
+    call FormatDec
 
     mov ax, 0b800h
     mov es, ax
@@ -60,6 +61,38 @@ InputNumber proc
 @@exit: ret
 
 endp InputNumber
+
+; -----------------------------------------------------------------------------
+; FormatDec Format number as decimal string to es:di
+; ax -- number
+; di -- pointer to buf
+; destroys: si, dx, bx, cl
+; return: none
+; -----------------------------------------------------------------------------
+
+FormatDec proc
+    cld
+    xor dx, dx
+
+    mov si, 10d
+
+    mov bx, 5 ; No more than 5 digits
+
+    @@format_loop:
+        dec bx
+        div si
+        
+        lea cx, ['0' + bx]
+        mov es:[di + bx], cl
+
+        test bx, bx
+    jne @@format_loop
+
+    mov [di + 5], "$"
+
+    ret
+
+endp FormatDec
 
 ; -----------------------------------------------------------------------------
 ; FormatBin Format number as binary string to es:di
