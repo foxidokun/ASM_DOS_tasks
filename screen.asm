@@ -10,18 +10,18 @@ start:
     call InputNumber
     mov di, offset free_mem
     
-    ; mov ax, bx
-    ; push bx
-    ; call FormatDec
-    ; pop bx
-    ; mov di, offset free_mem + 6d ; 5 digits + '$'
+    mov ax, bx
+    push bx
+    call FormatDec
+    pop bx
+    mov di, offset free_mem + 6d ; 5 digits + '$'
     
-    ; mov si, bx
-    ; call FormatHex
-    ; mov bx, si
-    
-    mov di, offset free_mem; + strlen (0xAAAAh$)
+    mov si, bx
     call FormatBin
+    mov bx, si
+    
+    mov di, offset free_mem + 6d + 19d; + strlen (0b0000...0$)
+    call FormatHex
 
     mov ax, 0b800h
     mov es, ax
@@ -37,7 +37,7 @@ start:
     call StrPrint
 
     mov bx, offset box_symbols
-    mov si, offset free_mem + 6d + 8d
+    mov si, offset free_mem + 6d + 19d
     mov di, 160d * 9 + 80
     call StrPrint
 
