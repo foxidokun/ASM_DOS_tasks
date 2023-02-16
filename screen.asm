@@ -15,10 +15,9 @@ start:
     call FormatHex
 
     mov ah, color_attr
-    mov si, offset free_mem
+    mov si, offset message
     mov di, 160d * 5 + 80
     mov bx, offset box_symbols
-    mov cx, message_len + 15
 
     call StrPrint
 
@@ -58,7 +57,7 @@ FormatHex proc
 
     mov ah, al
     xor ch, ch
-    loop @@begin
+loop @@begin
 
     mov word ptr [di], '$h'
 
@@ -71,12 +70,21 @@ endp FormatHex
 ; si -- string pointer
 ; di -- offset
 ; bx -- pointer to box_symbols array
-; cx -- strlen
 ; expects es -> videoseg
 ; return: none
-; destroys: al
+; destroys: al, cx
 ; -----------------------------------------------------------------------------
 StrPrint proc
+    xor cx, cx
+
+    @@get_len_loop:
+        inc cx
+        inc si
+        cmp byte ptr [si-1], '$'
+    jne @@get_len_loop
+
+    sub si, cx
+
     sub di, 160d        ; Move cursor to prev line
     add cx, 2           ; sizeof(string) = 2 * strlen (+ color codes) + 2*2 (whitespaces)
     sal cx, 1
@@ -137,7 +145,6 @@ endp StrPrint
 
 .data
 message db "1000-7$"
-message_len equ $ - message
 box_symbols db 0dah, 0c4h, 0bfh, 0b3h, 0d9h, 0c0h ; сегменты LT, CM, RT, RM, RB, LB (left/center/right top/middle/bottom)
 hex_symbols db "0123456789ABCDEF"
 
