@@ -17,7 +17,7 @@ start:
     mov ah, color_attr
     mov si, offset free_mem
     mov di, 160d * 5 + 80
-    mov bx, offset symbols
+    mov bx, offset box_symbols
     mov cx, message_len + 15
 
     call StrPrint
@@ -43,7 +43,7 @@ FormatHex proc
     mov si, ax
     and si, 0F000h
     shr si, 12d
-    add si, offset hexsymbols
+    add si, offset hex_symbols
     mov ch, [si]
     mov [di], ch
     inc di
@@ -51,7 +51,7 @@ FormatHex proc
     mov si, ax
     and si, 0F00h
     shr si, 8d
-    add si, offset hexsymbols
+    add si, offset hex_symbols
     mov ch, [si]
     mov [di], ch
     inc di
@@ -70,7 +70,7 @@ endp FormatHex
 ; ah -- color attr
 ; si -- string pointer
 ; di -- offset
-; bx -- pointer to symbols array
+; bx -- pointer to box_symbols array
 ; cx -- strlen
 ; expects es -> videoseg
 ; return: none
@@ -138,8 +138,8 @@ endp StrPrint
 .data
 message db "1000-7$"
 message_len equ $ - message
-symbols db 0dah, 0c4h, 0bfh, 0b3h, 0d9h, 0c0h ; сегменты LT, CM, RT, RM, RB, LB (left/center/right top/middle/bottom)
-hexsymbols db "0123456789ABCDEF"
+box_symbols db 0dah, 0c4h, 0bfh, 0b3h, 0d9h, 0c0h ; сегменты LT, CM, RT, RM, RB, LB (left/center/right top/middle/bottom)
+hex_symbols db "0123456789ABCDEF"
 
 free_mem: db "FINDME$"
 end start
