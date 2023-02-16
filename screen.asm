@@ -7,15 +7,14 @@ color_attr equ 4eh
     org 100h
 
 start:   
-    mov ax, 0b800h
-    mov es, ax
-
-    mov bx, 13228d
+    mov bx, 0ABBAh
     mov di, offset free_mem
     call FormatHex
 
+    mov ax, 0b800h
+    mov es, ax
     mov ah, color_attr
-    mov si, offset message
+    mov si, offset free_mem
     mov di, 160d * 5 + 80
     mov bx, offset box_symbols
 
@@ -25,8 +24,36 @@ start:
     int 21h
 
 ; -----------------------------------------------------------------------------
-; FormatHex
-; ax -- number
+; FormatBin Format number as binary string to es:di
+; bx -- number
+; di -- pointer to buf
+; destroys: ax, cx
+; return: none
+; -----------------------------------------------------------------------------
+FormatBin proc
+    cld
+    mov word ptr [di], 'b0' ; Add "0b" to string begining
+    add di, 2
+
+    mov cx, 16 ; loop for 16 bits
+
+    @@format_bit_loop:
+        mov ax, bx
+        and ax, 1b  ; Extract last bit
+        add al, "0" ; Convert to char
+        
+        stosb
+        sar bx, 1
+    loop @@format_bit_loop
+
+    mov byte ptr [di], '$'
+    ret
+endp FormatBin
+
+
+; -----------------------------------------------------------------------------
+; FormatHex Format number as Hex string to es:di
+; bx -- number
 ; di -- pointer to buf
 ; destroys: si, cx
 ; return: none
@@ -34,30 +61,26 @@ start:
 FormatHex proc
     cld
     
-    mov cx, 2
-    mov word ptr [di], 'x0'
+    mov word ptr [di], 'x0' ; Add "0x" to string begining
     add di, 2
-
-@@begin: 
-    mov si, ax
-    and si, 0F000h
+    
+    mov cx, 2   ; Loop for two bytes
+@@format_byte_loop: 
+    mov si, bx
+    and si, 0F000h  ; Extract 4 bits
     shr si, 12d
-    add si, offset hex_symbols
-    mov ch, [si]
-    mov [di], ch
-    inc di
+    add si, offset hex_symbols ; Convert to char
+    movsb
 
-    mov si, ax
+    mov si, bx   ; Same with other 4 bits
     and si, 0F00h
     shr si, 8d
     add si, offset hex_symbols
-    mov ch, [si]
-    mov [di], ch
-    inc di
+    movsb
 
-    mov ah, al
+    mov bh, bl
     xor ch, ch
-loop @@begin
+loop @@format_byte_loop
 
     mov word ptr [di], '$h'
 
@@ -75,23 +98,28 @@ endp FormatHex
 ; destroys: al, cx
 ; -----------------------------------------------------------------------------
 StrPrint proc
+    cld
     xor cx, cx
-
-    @@get_len_loop:
+    
+    add di, 2d          ; Add trailing whitespace to text
+    @@print_loop:       ; Copy string & count len
+        lodsb
         inc cx
-        inc si
-        cmp byte ptr [si-1], '$'
-    jne @@get_len_loop
+        cmp al, '$'
+        je @@print_loop_exit
+        stosw
+        jmp @@print_loop
+    @@print_loop_exit:
 
-    sub si, cx
+    sub si, cx  ; Return string pointer
 
-    sub di, 160d        ; Move cursor to prev line
-    add cx, 2           ; sizeof(string) = 2 * strlen (+ color codes) + 2*2 (whitespaces)
-    sal cx, 1
+    sal cx, 1   ; cx := sizeof (string) aka 2*cx (2 bytes per char)
+    sub di, cx  ; Return dest pointer (2 bytes per char)
 
-    mov al, [bx]        ; Reassig reg due to memory indexing limitations
-    push si
-    mov si, bx
+    sub di, 160d + 2d   ; Move cursor to prev line & return to the original column
+    add cx, 4           ; Add two whitespaces (4 bytes)
+
+    mov si, bx ; Reassig reg due to memory indexing limitations
     mov bx, cx
 
     mov al, [si]                ; Left top angle
@@ -106,34 +134,20 @@ StrPrint proc
     mov al, [si + 5]
     mov byte ptr es:[di + 2*160d], al       ; Left bottom
 
-    mov al, [si + 3]
+    mov al, [si + 3]                    ; Box 
     mov byte ptr es:[di + 160d], al
     mov byte ptr es:[di + bx + 160d], al
 
-    mov bx, 0
-    sub cx, 1
-    sar cx, 1
-    add di, 2d
+    xor bx, bx
+    sub cx, 1   ; Return cx to strlen
+    sar cx, 1   
+    add di, 2d  ; Move cursor to text column
     @@box_print_loop:
         mov al, [si + 1]
         mov es:[di + bx], al
         mov es:[di + bx + 2*160d], al
         add bx, 2
     loop @@box_print_loop
-    
-    mov bx, si  ; Return registers to normal values
-    pop si
-
-    add di, 160d + 2d ; Return pointer to text row
-
-    cld
-    @@load_loop:        ; Copy string from memory to string
-        lodsb
-        cmp al, '$'
-        je @@return
-
-        stosw
-    jmp @@load_loop
     
     @@return:
     ret
@@ -144,7 +158,7 @@ endp StrPrint
 ; -----------------------------------------------------------------------------
 
 .data
-message db "1000-7$"
+message db "1000-7 aka dead inside$"
 box_symbols db 0dah, 0c4h, 0bfh, 0b3h, 0d9h, 0c0h ; сегменты LT, CM, RT, RM, RB, LB (left/center/right top/middle/bottom)
 hex_symbols db "0123456789ABCDEF"
 
