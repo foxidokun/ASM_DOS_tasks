@@ -10,17 +10,17 @@ start:
     call InputNumber
     mov di, offset free_mem
     
-    mov ax, bx
-    push bx
-    call FormatDec
-    pop bx
-    mov di, offset free_mem + 6d ; 5 digits + '$'
+    ; mov ax, bx
+    ; push bx
+    ; call FormatDec
+    ; pop bx
+    ; mov di, offset free_mem + 6d ; 5 digits + '$'
     
-    mov si, bx
-    call FormatHex
-    mov bx, si
-    mov di, offset free_mem + 6d + 8d ; + strlen (0xAAAAh$)
-
+    ; mov si, bx
+    ; call FormatHex
+    ; mov bx, si
+    
+    mov di, offset free_mem; + strlen (0xAAAAh$)
     call FormatBin
 
     mov ax, 0b800h
@@ -131,11 +131,12 @@ FormatBin proc
 
     @@format_bit_loop:
         mov ax, bx
-        and ax, 1b  ; Extract last bit
+        and ax, 8000h  ; Extract frst bit
+        shr ax, 15
         add al, "0" ; Convert to char
         
         stosb
-        sar bx, 1
+        shl bx, 1
     loop @@format_bit_loop
 
     mov byte ptr [di], '$'
