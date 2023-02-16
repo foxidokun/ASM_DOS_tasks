@@ -7,7 +7,7 @@ color_attr equ 4eh
     org 100h
 
 start:   
-    mov bx, 0ABBAh
+    call InputNumber
     mov di, offset free_mem
     call FormatHex
 
@@ -22,6 +22,44 @@ start:
 
     mov ax, 4c00h
     int 21h
+
+; -----------------------------------------------------------------------------
+; InputNumber read number from keyboard
+; input: none
+; destroys: dx, cx, si
+; return: bx -- number
+; -----------------------------------------------------------------------------
+
+InputNumber proc
+    xor bx, bx
+    xor cx, cx
+    
+    mov dx, offset invite_string ; printf (invite_string)
+    mov ah, 09h
+    int 21h
+
+    mov si, 10d ; For mul instruction
+
+@@read_loop:
+    mov ah, 01H ; Keyboard Input (char -> al)
+    int 21h
+
+    cmp al, "$"
+    je @@exit
+
+    sub al, "0"
+    mov cl, al
+
+    mov ax, bx
+    mul si
+    add ax, cx
+    mov bx, ax
+
+    jmp @@read_loop
+
+@@exit: ret
+
+endp InputNumber
 
 ; -----------------------------------------------------------------------------
 ; FormatBin Format number as binary string to es:di
@@ -158,7 +196,7 @@ endp StrPrint
 ; -----------------------------------------------------------------------------
 
 .data
-message db "1000-7 aka dead inside$"
+invite_string db "Please input number: $"
 box_symbols db 0dah, 0c4h, 0bfh, 0b3h, 0d9h, 0c0h ; сегменты LT, CM, RT, RM, RB, LB (left/center/right top/middle/bottom)
 hex_symbols db "0123456789ABCDEF"
 
