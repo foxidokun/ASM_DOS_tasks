@@ -132,7 +132,7 @@ FormatBin proc
     @@format_bit_loop:
         mov ax, bx
         and ax, 8000h  ; Extract frst bit
-        shr ax, 15
+        rol ax, 1
         add al, "0" ; Convert to char
         
         stosb
