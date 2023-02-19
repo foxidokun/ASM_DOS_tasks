@@ -4,157 +4,132 @@ locals @@
 .code
     org 100h
 
+; Params
+; Y 
+; X
+; Height
+; Width
+; Type
+
+set_color_scheme macro
+    cmp bl, 5
+    je @@input
+    
+    dec bl
+    mov al, 10
+    mul bl
+    mov bx, ax
+    lea si, [bx + offset color_scheme_1]
+
+@@input:
+endm
+
 start:
+    mov si, 82h
+    call ReadNumber ; Read y
+    mov al, 160d
+    mul bl
+    mov di, ax      ; offset = 160 * y 
+    
+    call ReadNumber ; Read x
+    shl bx, 1
+    add di, bx      ; offset += 2*x (two bytes per char)
+
+    call ReadNumber ; Read height
+    mov dl, bl      ; Store 
+
+    call ReadNumber ; Read width
+    mov dh, bl      ; Temp store width in dh
+
+    call ReadNumber
+    set_color_scheme
+
+    xor ch, ch
+    mov cl, dh         ; Load width to cx
+
     mov ax, 0b800h
     mov es, ax
 
-    mov di, 3 * 160d + 2 * 10d
-    mov ax, offset test_str
-    mov cx, 40
-    mov dl, 10
-    mov si, offset frame_symbols
+    push dx         ; Temp store height in stack
+    call ReadLine
+    mov ax, dx
+    pop dx          ; Load height from stack
+
     call DrawFrameWithText
-
-
-    ; mov si, offset test_str
-    ; mov di, 3 * 160d + 2 * 10d + 4 * 160d + 2 * 1d
-    ; call DrawText
 
     mov ax, 4c00h ; exit(0)
     int 21h
 
-; -----------------------------------------------------------------------------
-; DrawLine
-; ah -- color attr
-; es:di -- dest
-; cx -- inner length
-; bh -- first symbol
-; bl -- last symbol
-; dh -- inner symbol
-; return: none
-; expects: es --> videomem
-; destroys: al (al cx di)
-; -----------------------------------------------------------------------------
-DrawLine proc
-    mov al, bh
-    stosw
-
-    mov al, dh
-    rep stosw
-
-    mov al, bl
-    stosw
-
-    ret
-endp DrawLine
+    include lib\draw.asm
 
 ; -----------------------------------------------------------------------------
-; DrawFrame
-; ah -- color attr
-; es:di -- Top Left corner offset
-; cx -- inner length
-; si -- pointer to symbols array (see frame_symbols)
-; dl -- inner height
-; return: none
-; expects: es --> videomem
-; destroys: al (bx di dx cx)
+; Read Number From String
+; si -- input string
+; return: bl -- number
+;         si -- points to next symbol after first not digit
+; destroys: cx ax
 ; -----------------------------------------------------------------------------
-DrawFrameOneLineMacro macro
-    push cx
-    call DrawLine
-    pop cx
 
-    sub di, cx
-    sub di, cx
-    add di, 160d - 4d ; move to next row
-endm DrawFrameOneLineMacro
+ReadNumber proc
+    cld
+    xor bx, bx
 
-DrawFrame proc
-    mov bh, [si + 0]        ; Load header line symbols
-    mov dh, [si + 1]
-    mov bl, [si + 2]
+    mov ch, 10d
 
-    DrawFrameOneLineMacro   ; Draw Header line
-
-    mov bh, [si + 3]        ; Load inner line symbols
-    mov dh, [si + 4]
-    mov bl, [si + 5]
-    
-    @@inner_loop:
-        DrawFrameOneLineMacro   ; Draw inner line
-        dec dl
-        test dl, dl
-    jnz @@inner_loop
-    
-    mov bh, [si + 6]        ; Load bottom line symbols
-    mov dh, [si + 7]
-    mov bl, [si + 8]
-
-    DrawFrameOneLineMacro   ; Draw bottom line
-
-    ret
-endp DrawFrame
-
-; -----------------------------------------------------------------------------
-; DrawText
-; ah -- color attr
-; si -- pointer to src
-; di -- pointer to dest
-; expects: es --> videomem
-; return: none
-; destroys: al (si di)
-; -----------------------------------------------------------------------------
-DrawText proc
-
-@@copy_loop:
+@@loop_scan:
     lodsb
-    test al, al
-    jz @@exit
-    stosw
-    jmp @@copy_loop
+    sub al, '0'
+    jb @@exit
+    cmp al, 9d
+    ja @@exit
+
+    mov cl, al
+    mov al, bl
+    mul ch         ; ax = 10al
+    add al, cl
+    mov bl, al
+    jmp @@loop_scan
 
 @@exit:
     ret
-endp DrawText
+endp ReadNumber
 
 ; -----------------------------------------------------------------------------
-; DrawFrameWithText
-; si -- pointer to symbols array (see frame_symbols)
-; es:di -- offset
-; ax -- string pointer
-; cx -- inner length
-; dl -- inner height
-; expects: es --> videomem
-; return: none
-; destroys: al (si di)
+; Read string From stdin
+; return: dx -- pointer to null-terminated string
+; destroys: ah, bx
 ; -----------------------------------------------------------------------------
-DrawFrameWithText proc
-    push ax ; Save registers
-    push dx ; Save dl
-    push di
-    mov ah, [si + 9]
-    call DrawFrame ; Draw frame
-    
-    pop di ; Restore di
-    pop dx ; Restore dl
-    mov ax, 80d
-    mul dl
-    add ax, 4  ; Ax = dl * 80d = (dl/2) * 160d
-    add di, ax ; Change offset
-    
-    mov ah, [si + 9] ; Restore color attr
-    pop si  ; Restore string pointer (ax to si)
 
-    call DrawText
+ReadLine proc
+    mov ah, 09h
+    mov dx, offset invite_string
+    int 21h
 
+    mov ah, 0aH
+    mov dx, offset input_array
+
+    int 21h
+    
+    add dx, 2
+    mov bx, dx
+    mov ah, [bx - 1] ; Load len of input
+    add bl, ah
+    adc bh, 0
+
+    mov byte ptr [bx], 00h    
+    
     ret
-endp DrawFrameWithText
-
-
-; -----------------------------------------------------------------------------
+endp ReadLine
 
 .data
-frame_symbols db 0dah, 0c4h, 0bfh, 0b3h, 0b0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
+color_scheme_1    db 0dah, 0c4h, 0bfh, 0b3h, 0b0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
+color_scheme_2    db 0dah, 0c4h, 0bfh, 0b3h, 0b0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
+color_scheme_3    db 0dah, 0c4h, 0bfh, 0b3h, 0b0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
+color_scheme_4    db 0dah, 0c4h, 0bfh, 0b3h, 0b0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
+color_scheme_user db 10 dup('#')
+input_array       db 81 dup(79) ; For 21h::0ah. Max len = 79 bytes (78 max + '\0') [+2 for len and max]
+invite_string     db "Input text: $"
+
 test_str db "Hello world!", 00h
 
 end start
