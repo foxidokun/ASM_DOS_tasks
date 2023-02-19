@@ -117,11 +117,9 @@ MemCmp proc
     and al, 1b  ; al = cx % 2
     shr cx, 1
 
-; TODO change to repe cmpsw
-@@loop_cmp:
-    cmpsw
-    jnz @@exit
-loop @@loop_cmp
+    repz cmpsw
+    jne @@exit
+    jcxz @@exit
 
     test al, al ; compare last byte if needed
     jz @@exit
