@@ -11,18 +11,7 @@ locals @@
 ; Width
 ; Type
 
-set_color_scheme macro
-    cmp bl, 5
-    je @@input
-    
-    dec bl
-    mov al, 10
-    mul bl
-    mov bx, ax
-    lea si, [bx + offset color_scheme_1]
-
-@@input:
-endm
+; -----------------------------------------------------------------------------
 
 start:
     mov si, 82h
@@ -42,7 +31,10 @@ start:
     mov dh, bl      ; Temp store width in dh
 
     call ReadNumber
-    set_color_scheme
+
+    push dx 
+    call SetColorScheme
+    pop dx
 
     xor ch, ch
     mov cl, dh         ; Load width to cx
@@ -50,7 +42,7 @@ start:
     mov ax, 0b800h
     mov es, ax
 
-    push dx         ; Temp store height in stack
+    push dx         
     call ReadLine
     mov ax, dx
     pop dx          ; Load height from stack
@@ -61,6 +53,55 @@ start:
     int 21h
 
     include lib\draw.asm
+
+; -----------------------------------------------------------------------------
+; Choose color scheme
+; input: bl -- number of color scheme
+; return: si -- pointer to symbol array
+; destroys: ax bx dx
+; -----------------------------------------------------------------------------
+
+load_symbol_macro macro ARRAY, NUM
+    mov ah, 09h
+    mov dx, offset ARRAY
+    int 21h
+
+    mov ah, 01h
+    int 21h
+    mov color_scheme_user[NUM], al
+
+    mov ah, 02h
+    mov dl, 0dh ; \r
+    int 21h
+    mov dl, 0ah ; \n
+    int 21h
+endm 
+
+SetColorScheme proc
+    cmp bl, 5
+    je @@input
+    
+    dec bl
+    mov al, 10
+    mul bl
+    mov bx, ax
+    lea si, [bx + offset color_scheme_1]
+    jmp @@exit
+@@input:
+    load_symbol_macro color_invite_string_LT 0
+    load_symbol_macro color_invite_string_CT 1
+    load_symbol_macro color_invite_string_RT 2
+    load_symbol_macro color_invite_string_LM 3
+    load_symbol_macro color_invite_string_CM 4
+    load_symbol_macro color_invite_string_RM 5
+    load_symbol_macro color_invite_string_LB 6
+    load_symbol_macro color_invite_string_CB 7
+    load_symbol_macro color_invite_string_RB 8
+
+    mov si, offset color_scheme_user
+@@exit:
+    ret
+endp SetColorScheme
 
 ; -----------------------------------------------------------------------------
 ; Read Number From String
@@ -102,7 +143,7 @@ endp ReadNumber
 
 ReadLine proc
     mov ah, 09h
-    mov dx, offset invite_string
+    mov dx, offset text_invite_string
     int 21h
 
     mov ah, 0aH
@@ -122,13 +163,23 @@ ReadLine proc
 endp ReadLine
 
 .data
-color_scheme_1    db 0dah, 0c4h, 0bfh, 0b3h, 0b0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
-color_scheme_2    db 0dah, 0c4h, 0bfh, 0b3h, 0b0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
-color_scheme_3    db 0dah, 0c4h, 0bfh, 0b3h, 0b0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
-color_scheme_4    db 0dah, 0c4h, 0bfh, 0b3h, 0b0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
-color_scheme_user db 10 dup('#')
-input_array       db 81 dup(79) ; For 21h::0ah. Max len = 79 bytes (78 max + '\0') [+2 for len and max]
-invite_string     db "Input text: $"
+color_scheme_1         db 0dah, 0c4h, 0bfh, 0b3h, 0b0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
+color_scheme_2         db 0dah, 0c4h, 0bfh, 0b3h, 0b0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
+color_scheme_3         db 0dah, 0c4h, 0bfh, 0b3h, 0b0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
+color_scheme_4         db 0dah, 0c4h, 0bfh, 0b3h, 0b0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
+color_scheme_user      db 10 dup(4eh)
+input_array            db 81 dup(79) ; For 21h::0ah. Max len = 79 bytes (78 max + '\0') [+2 for len and max]
+color_invite_string_LT db "Symbol for left top corner: $"
+color_invite_string_CT db "Symbol for top horizontal line: $"
+color_invite_string_RT db "Symbol for right top corner: $"
+color_invite_string_LM db "Symbol for left vertical line: $"
+color_invite_string_CM db "Symbol for inner cells: $"
+color_invite_string_RM db "Symbol for right vertical line: $"
+color_invite_string_LB db "Symbol for left bottom corner: $"
+color_invite_string_CB db "Symbol for bottom horizontal line: $"
+color_invite_string_RB db "Symbol for right bottom corner: $"
+text_invite_string     db "Input text: $"
+
 
 test_str db "Hello world!", 00h
 
