@@ -104,33 +104,36 @@ endp DrawText
 ; destroys: al (si di)
 ; -----------------------------------------------------------------------------
 DrawFrameWithText proc
-    push ax ; Save registers
-    push cx
-    push dx ; Save dl
-    push di
+    push [si + 9] ; Save color attr (0)
+    push ax       ; Save string pointer (1)
+    push cx       ; Save inner length (2)
+    push dx       ; Save inner height [dl] (3)
+    push di       ; Save offset (4)
     mov ah, [si + 9]
     call DrawFrame ; Draw frame
     
-    pop di ; Restore di
-    pop dx ; Restore dl
-    pop cx ; Restore cx
+    pop di ; Restore offset (4)
+    pop dx ; Restore inner height (3)
+    pop cx ; Restore inner length (2)
     mov ax, 80d
     mul dl
     add ax, 4  ; Ax = dl * 80d = (dl/2) * 160d
     add di, ax ; Change offset
-    shr cx, 1
-    add di, cx
+    
+    and cx, 0FFFEh ; offset += (length / 2) * 2 (2 bytes per symbol & length / 2 symbols)
+    add di, cx     ; 
 
-    pop si      ; Load string pointer to si
+    pop si      ; Load string pointer to si (1)
     push si
-    call StrLen
-    shr bx, 1
-    and bx, 0FFFEh
-    sub di, bx
 
-    ; mov ah, [si + 9] ; Restore color attr
-    mov ah, 4eh
-    pop si  ; Restore string pointer (ax to si)
+    call StrLen
+
+    and bx, 0FFFEh  ; offset -= (strlen / 2) * 2
+    sub di, bx      ; 
+
+    pop si     ; Restore string pointer (ax to si) (1)
+    pop ax     ; Restore color attr (0)
+    mov ah, al ; But we restored to al, not ah
 
     call DrawText
 
