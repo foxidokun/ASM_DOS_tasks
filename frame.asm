@@ -38,22 +38,22 @@ start:
     call ReadNumber ; Read width
     mov dh, bl      ; Temp store width in dh
 
-    call ReadNumber
+    call ReadNumber ; Read color scheme number
 
-    push dx 
-    call SetColorScheme
+    push dx
+    call SetColorScheme ; Set color scheme pointer
     pop dx
 
     xor ch, ch
-    mov cl, dh         ; Load width to cl
+    mov cl, dh         ; Load width to cx
 
     mov ax, 0b800h
-    mov es, ax
+    mov es, ax         ; Set es --> videomem
 
-    push dx         
-    call ReadLine
+    push dx            ; Save height (0)
+    call ReadLine      ; Read text
     mov ax, dx
-    pop dx          ; Load height from stack
+    pop dx             ; Load height from stack (0)
 
     call DrawFrameWithText
 
@@ -179,12 +179,14 @@ ReadLine proc
 endp ReadLine
 
 .data
+
 color_scheme_1         db 0dah, 0c4h, 0bfh, 0b3h, 0b0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
 color_scheme_2         db 0c9h, 0cdh, 0bbh, 0bah, 0b1h, 0bah, 0c8h, 0cdh, 0bch, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
 color_scheme_3         db "#",  "#",  "#",  "#",  "#",  "#",  "#",  "#",  "#",  4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
 color_scheme_4         db 004h, 01fh, 004h, 010h, 004h, 011h, 004h, 01eh, 004h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
 color_scheme_user      db 10 dup(4eh)
 input_array            db 81 dup(79) ; For 21h::0ah. Max len = 79 bytes (78 max + '\0') [+2 for len and max]
+
 color_invite_string_LT db "Symbol for left top corner: $"
 color_invite_string_CT db "Symbol for top horizontal line: $"
 color_invite_string_RT db "Symbol for right top corner: $"
@@ -194,6 +196,7 @@ color_invite_string_RM db "Symbol for right vertical line: $"
 color_invite_string_LB db "Symbol for left bottom corner: $"
 color_invite_string_CB db "Symbol for bottom horizontal line: $"
 color_invite_string_RB db "Symbol for right bottom corner: $"
+
 text_invite_string     db "Input text: $"
 help_string            db "USAGE: frame Y X Height Width FrameStyle", 0dh, 0ah, "(X,Y) -- frame pos from top left corner", 0dh, 0ah, "Height Width -- Frame size", 0dh, 0ah, "FrameStyle:", 0dh, 0ah, "1 -- signle line", 0dh, 0ah, "2 -- double line", 0dh, 0ah, "3 -- '#'", 0dh, 0ah, "4 -- triangles", 0dh, 0ah, "5 -- user defined$"
 
