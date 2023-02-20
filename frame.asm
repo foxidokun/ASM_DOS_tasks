@@ -1,4 +1,4 @@
-.386
+.286
 .model tiny
 locals @@
 
@@ -45,7 +45,7 @@ start:
     pop dx
 
     xor ch, ch
-    mov cl, dh         ; Load width to cx
+    mov cl, dh         ; Load width to cl
 
     mov ax, 0b800h
     mov es, ax

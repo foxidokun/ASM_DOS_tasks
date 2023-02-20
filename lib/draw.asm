@@ -105,6 +105,7 @@ endp DrawText
 ; -----------------------------------------------------------------------------
 DrawFrameWithText proc
     push ax ; Save registers
+    push cx
     push dx ; Save dl
     push di
     mov ah, [si + 9]
@@ -112,12 +113,23 @@ DrawFrameWithText proc
     
     pop di ; Restore di
     pop dx ; Restore dl
+    pop cx ; Restore cx
     mov ax, 80d
     mul dl
     add ax, 4  ; Ax = dl * 80d = (dl/2) * 160d
     add di, ax ; Change offset
-    
-    mov ah, [si + 9] ; Restore color attr
+    shr cx, 1
+    add di, cx
+
+    pop si      ; Load string pointer to si
+    push si
+    call StrLen
+    shr bx, 1
+    and bx, 0FFFEh
+    sub di, bx
+
+    ; mov ah, [si + 9] ; Restore color attr
+    mov ah, 4eh
     pop si  ; Restore string pointer (ax to si)
 
     call DrawText
@@ -125,6 +137,7 @@ DrawFrameWithText proc
     ret
 endp DrawFrameWithText
 
+include lib\strlib.asm
 
 ; -----------------------------------------------------------------------------
 
