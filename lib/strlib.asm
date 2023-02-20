@@ -150,7 +150,6 @@ StrCmp proc
 
     loop @@compare_loop
 
-
 @@lhs_zero:
     mov al, [di]
     test al, al

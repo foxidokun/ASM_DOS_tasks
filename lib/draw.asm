@@ -7,17 +7,17 @@
 ; bl -- last symbol
 ; dh -- inner symbol
 ; return: none
-; expects: es --> videomem
+; expects: es --> videomem, cld
 ; destroys: al (al cx di)
 ; -----------------------------------------------------------------------------
 DrawLine proc
-    mov al, bh
+    mov al, bh  ; put first symbol
     stosw
 
-    mov al, dh
+    mov al, dh  ; put second symbol
     rep stosw
 
-    mov al, bl
+    mov al, bl  ; put third symbol
     stosw
 
     ret

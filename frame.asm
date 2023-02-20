@@ -22,6 +22,8 @@ start:
     cmp bl, 1
     jna echo_help_and_exit
 
+    mov byte ptr [bx + 80h + 1h], 00h
+
     mov si, 82h
     call ReadNumber ; Read y
     mov al, 160d
@@ -40,6 +42,7 @@ start:
 
     call ReadNumber ; Read color scheme number
 
+    push si         ; Save position of last symbol (0)
     push dx
     call SetColorScheme ; Set color scheme pointer
     pop dx
@@ -50,10 +53,7 @@ start:
     mov ax, 0b800h
     mov es, ax         ; Set es --> videomem
 
-    push dx            ; Save height (0)
-    call ReadLine      ; Read text
-    mov ax, dx
-    pop dx             ; Load height from stack (0)
+    pop ax               ; Load position of last symbol
 
     call DrawFrameWithText
 
@@ -199,7 +199,5 @@ color_invite_string_RB db "Symbol for right bottom corner: $"
 
 text_invite_string     db "Input text: $"
 help_string            db "USAGE: frame Y X Height Width FrameStyle", 0dh, 0ah, "(X,Y) -- frame pos from top left corner", 0dh, 0ah, "Height Width -- Frame size", 0dh, 0ah, "FrameStyle:", 0dh, 0ah, "1 -- signle line", 0dh, 0ah, "2 -- double line", 0dh, 0ah, "3 -- '#'", 0dh, 0ah, "4 -- triangles", 0dh, 0ah, "5 -- user defined$"
-
-test_str db "Hello world!", 00h
 
 end start
