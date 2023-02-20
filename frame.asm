@@ -1,3 +1,4 @@
+.386
 .model tiny
 locals @@
 
@@ -123,11 +124,11 @@ endp SetColorScheme
 ; si -- input string
 ; return: bl -- number
 ;         si -- points to next symbol after first not digit
+; expects: cld
 ; destroys: cx ax
 ; -----------------------------------------------------------------------------
 
 ReadNumber proc
-    cld
     xor bx, bx
 
     mov ch, 10d

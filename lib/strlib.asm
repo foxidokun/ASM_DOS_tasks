@@ -2,11 +2,11 @@
 ; StrLen: strlen(str)
 ; si -- string pointer
 ; return: bx -- strlen
+; expects: cld
 ; destroys: ax (si bx) 
 ; -----------------------------------------------------------------------------
 
 StrLen proc
-    cld
     mov bx, si
 
 @@iter:  
@@ -37,11 +37,10 @@ endp
 ; di -- dest
 ; cx -- bytes to copy
 ; return: none
+; expects: cld
 ; destroys: al (si di cx)
 ; -----------------------------------------------------------------------------
 MemCpy proc
-    cld
-
     mov al, cl
     and al, 1b  ; al = cx % 2
 
@@ -61,11 +60,10 @@ endp MemCpy
 ; ds:si -- src
 ; es:di -- dest
 ; return: none
+; expects: cld
 ; destroys: ax (si di)
 ; -----------------------------------------------------------------------------
 StrCpy proc
-    cld
-
     @@copy_byte_loop:
         lodsw
         
@@ -92,11 +90,10 @@ endp StrCpy
 ; al -- byte
 ; cx -- count
 ; return: none
-; destroys: 
+; destroys: (di)
+; expects: cld
 ; -----------------------------------------------------------------------------
 MemSet proc
-    cld
-
     rep stosb
     ret
 endp MemSet
@@ -108,11 +105,10 @@ endp MemSet
 ; cx -- count
 ; return: cmp flags
 ; destroys: al
+; expects: cld
 ; -----------------------------------------------------------------------------
 
 MemCmp proc
-    cld
-
     mov al, cl
     and al, 1b  ; al = cx % 2
     shr cx, 1
@@ -136,9 +132,9 @@ endp MemCmp
 ; es:di -- rhs
 ; return: cmp flags
 ; destroys: al
+; expects: cld
 ; -----------------------------------------------------------------------------
 StrCmp proc
-    cld
 @@compare_loop:
     cmpsb
 
