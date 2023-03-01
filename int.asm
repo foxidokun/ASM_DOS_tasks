@@ -56,17 +56,17 @@ New09hInt proc
 @@hotkey_pressed:
         push bp 
         mov bp, sp
-        push bx cx dx es ds si di ss ; save registers                   ;       |  stack frame  |
+        push bx cx dx si di ds es ss ; save registers                   ;       |  stack frame  |
                                                                         ;       -----------------
         mov dx, cs              ; set ds to our segment                 ;       | bp-1 | ax     |
         mov ds, dx                                                      ;       | bp   | old bp |
                                                                         ;       | bp+1 | bx     |
         mov bx, 0b800h          ; es -> videomem                        ;       | bp+2 | cx     |
         mov es, bx                                                      ;       | bp+3 | dx     |
-                                                                        ;       | bp+4 | es     |
-        mov ah, COLOR           ; put color attr                        ;       | bp+5 | ds     |
-        mov di, 2*160d - 2*9d   ; Offset = line +linelen - frame width  ;       | bp+6 | si     |
-        mov cx, 7d              ; inner length = strlen("AX XXXX")      ;       | bp+7 | di     |
+                                                                        ;       | bp+4 | si     |
+        mov ah, COLOR           ; put color attr                        ;       | bp+5 | di     |
+        mov di, 2*160d - 2*9d   ; Offset = line +linelen - frame width  ;       | bp+6 | ds     |
+        mov cx, 7d              ; inner length = strlen("AX XXXX")      ;       | bp+7 | es     |
         mov si, offset color_scheme                                     ;       | bp+8 | ss     |
         mov dl, REGISTER_NUM    ; inner height = 10 registers           ;       -----------------
         call DrawFrame          ; Draw frame
@@ -77,14 +77,14 @@ New09hInt proc
         PrintRegMacro "BX" bp+1
         PrintRegMacro "CX" bp+2
         PrintRegMacro "DX" bp+3
-        PrintRegMacro "SI" bp+6
-        PrintRegMacro "DI" bp+7
+        PrintRegMacro "SI" bp+4
+        PrintRegMacro "DI" bp+5
         PrintRegMacro "BP" bp
-        PrintRegMacro "DS" bp+5
-        PrintRegMacro "ES" bp+4
+        PrintRegMacro "DS" bp+6
+        PrintRegMacro "ES" bp+7
         PrintRegMacro "SS" bp+8
 
-        pop ss di si ds es dx cx bx ; restore registers 
+        pop ss es ds di si dx cx bx ; restore registers 
         pop bp
 
 @@continue_chain:
