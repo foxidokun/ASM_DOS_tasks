@@ -11,13 +11,13 @@ REGISTER_NUM equ 10d
 Start:  cli
         xor bx, bx
         mov es, bx
-        mov bx, 9*4
+        mov bx, 8*4
 
         mov ax, es:[bx]
-        mov [Old09Ofs], ax
+        mov [Old08Ofs], ax
         mov ax, es:[bx+02]
-        mov [Old09Seg], ax
-        mov es:[bx], offset New09hInt
+        mov [Old08Seg], ax
+        mov es:[bx], offset New08hInt
         mov ax, cs
         mov es:[bx+2], ax
         sti
@@ -44,14 +44,14 @@ endm PrintByteMacro
 ; New 09h Interrupt Handler
 ; -----------------------------------------------------------------------------
 
-New09hInt proc
+New08hInt proc
         push ax
 
-        in al, 60h    ; read scan code from port 60h
+        ; in al, 60h    ; read scan code from port 60h
         
-        cmp al, HOTKEY_CODE     ; compare pressed key with hotkey
-        je @@hotkey_pressed   ; ignore interrupt if it is not hotkey
-        jmp cs:@@continue_chain ; long jump needed
+        ; cmp al, HOTKEY_CODE     ; compare pressed key with hotkey
+        ; je @@hotkey_pressed   ; ignore interrupt if it is not hotkey
+        ; jmp cs:@@continue_chain ; long jump needed
 
 @@hotkey_pressed:
         push bp 
@@ -91,10 +91,10 @@ New09hInt proc
         pop ax
 
         db 0eah         ; jmp far
-Old09Ofs dw 0           ; jmp Offset
-Old09Seg dw 0           ; jmp Segment
+Old08Ofs dw 0           ; jmp Offset
+Old08Seg dw 0           ; jmp Segment
 
-endp New09hInt
+endp New08hInt
 
 ; -----------------------------------------------------------------------------
 ; Reg Print
