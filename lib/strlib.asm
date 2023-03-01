@@ -10,7 +10,7 @@ StrLen proc
     mov bx, si
 
 @@iter:  
-    lodsw                   ; load byte
+    lodsw                   ; load word
     
     test al, al
     jz @@first_zero         ; test first byte
