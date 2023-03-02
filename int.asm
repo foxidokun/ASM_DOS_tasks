@@ -44,6 +44,7 @@ endp New09hInt
 ; -----------------------------------------------------------------------------
 
 New08hInt proc
+        cli
         push ax
 
         mov al, cs:[IsOverlayActive]
@@ -70,6 +71,7 @@ New08hInt proc
 @@continue_chain:
         pop ax
 
+        sti
         db 0eah         ; jmp far
 Old08Ofs dw 0           ; jmp Offset
 Old08Seg dw 0           ; jmp Segment
@@ -82,17 +84,18 @@ endp New08hInt
 ; expects: es -->videomem
 ;       |   stack frame   |
 ;       -------------------
-;       | bp+10| ax       |
-;       | bp+9 | old bp   |
-;       | bp+8 | bx       |
-;       | bp+7 | cx       |
-;       | bp+6 | dx       |
-;       | bp+5 | si       |
-;       | bp+4 | di       |
-;       | bp+3 | ds       |
-;       | bp+2 | es       |
-;       | bp+1 | ss       |
-;       | bp   | caller bp|
+;       | bp+22 | ax       |
+;       | bp+20 | old bp   |
+;       | bp+18 | bx       |
+;       | bp+16 | cx       |
+;       | bp+14 | dx       |
+;       | bp+12 | si       |
+;       | bp+10 | di       |
+;       | bp+8  | ds       |
+;       | bp+6  | es       |
+;       | bp+4  | ss       |
+;       | bp+2  | ret addr |
+;       | bp    | caller bp|
 ;       -------------------
 ; -----------------------------------------------------------------------------
 ; Print Reg Macro: load args + call PrintReg
@@ -104,6 +107,8 @@ PrintRegMacro macro NAME_H, REG_OFFSET
 endm PrintByteMacro
 
 DrawFrameWithRegs proc
+        push bp
+        mov bp, sp
 
         mov ah, COLOR           ; put color attr                        
         mov di, 160d - 2*9d   ; Offset = line +linelen - frame width    
@@ -114,17 +119,18 @@ DrawFrameWithRegs proc
 
         mov di, 2*160d - 16d    ; Set di to first pos in frame
 
-        PrintRegMacro "AX" bp+1 ; Print registers one by one
-        PrintRegMacro "BX" bp-1
-        PrintRegMacro "CX" bp-2
-        PrintRegMacro "DX" bp-3
-        PrintRegMacro "SI" bp-4
-        PrintRegMacro "DI" bp-5
-        PrintRegMacro "BP" bp
-        PrintRegMacro "DS" bp-6
-        PrintRegMacro "ES" bp-7
-        PrintRegMacro "SS" bp-8
+        PrintRegMacro "AX" bp+22 ; Print registers one by one
+        PrintRegMacro "BX" bp+18
+        PrintRegMacro "CX" bp+16
+        PrintRegMacro "DX" bp+14
+        PrintRegMacro "SI" bp+12
+        PrintRegMacro "DI" bp+10
+        PrintRegMacro "BP" bp+20
+        PrintRegMacro "DS" bp+8
+        PrintRegMacro "ES" bp+6
+        PrintRegMacro "SS" bp+4
 
+        pop bp
         ret
 endp
 
