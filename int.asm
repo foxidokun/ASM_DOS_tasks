@@ -43,15 +43,6 @@ endp New09hInt
 ; New 08h Interrupt Handler
 ; -----------------------------------------------------------------------------
 
-; -----------------------------------------------------------------------------
-; Print Reg Macro: load args + call PrintReg
-PrintRegMacro macro NAME_H, REG_OFFSET
-        mov dx, [ REG_OFFSET ]      ; Load ax
-        mov bx, NAME_H
-        call PrintReg
-        add di, 160d - 2 * 7d
-endm PrintByteMacro
-
 New08hInt proc
         push ax
 
@@ -63,19 +54,62 @@ New08hInt proc
 @@active:
         push bp 
         mov bp, sp
-        push bx cx dx si di ds es ss ; save registers                   ;       |  stack frame  |
-                                                                        ;       -----------------
-        mov dx, cs              ; set ds to our segment                 ;       | bp+1 | ax     |
-        mov ds, dx                                                      ;       | bp   | old bp |
-                                                                        ;       | bp-1 | bx     |
-        mov bx, 0b800h          ; es -> videomem                        ;       | bp-2 | cx     |
-        mov es, bx                                                      ;       | bp-3 | dx     |
-                                                                        ;       | bp-4 | si     |
-        mov ah, COLOR           ; put color attr                        ;       | bp-5 | di     |
-        mov di, 160d - 2*9d   ; Offset = line +linelen - frame width    ;       | bp-6 | ds     |
-        mov cx, 7d              ; inner length = strlen("AX XXXX")      ;       | bp-7 | es     |
-        mov si, offset color_scheme                                     ;       | bp-8 | ss     |
-        mov dl, REGISTER_NUM    ; inner height = 10 registers           ;       -----------------
+        push bx cx dx si di ds es ss ; save registers                   
+                                                                        
+        mov dx, cs              ; set ds to our segment                 
+        mov ds, dx                                                      
+                                                                        
+        mov bx, 0b800h          ; es -> videomem                        
+        mov es, bx                                                      
+                                                                        
+        call DrawFrameWithRegs
+
+        pop ss es ds di si dx cx bx ; restore registers 
+        pop bp
+
+@@continue_chain:
+        pop ax
+
+        db 0eah         ; jmp far
+Old08Ofs dw 0           ; jmp Offset
+Old08Seg dw 0           ; jmp Segment
+
+endp New08hInt
+
+; -----------------------------------------------------------------------------
+; DrawFrameWithRegs
+; input: (stack from bottom to top) ax bp bx cx dx si di ds es ss
+; expects: es -->videomem
+;       |   stack frame   |
+;       -------------------
+;       | bp+10| ax       |
+;       | bp+9 | old bp   |
+;       | bp+8 | bx       |
+;       | bp+7 | cx       |
+;       | bp+6 | dx       |
+;       | bp+5 | si       |
+;       | bp+4 | di       |
+;       | bp+3 | ds       |
+;       | bp+2 | es       |
+;       | bp+1 | ss       |
+;       | bp   | caller bp|
+;       -------------------
+; -----------------------------------------------------------------------------
+; Print Reg Macro: load args + call PrintReg
+PrintRegMacro macro NAME_H, REG_OFFSET
+        mov dx, [ REG_OFFSET ]      ; Load ax
+        mov bx, NAME_H
+        call PrintReg
+        add di, 160d - 2 * 7d
+endm PrintByteMacro
+
+DrawFrameWithRegs proc
+
+        mov ah, COLOR           ; put color attr                        
+        mov di, 160d - 2*9d   ; Offset = line +linelen - frame width    
+        mov cx, 7d              ; inner length = strlen("AX XXXX")      
+        mov si, offset color_scheme                                     
+        mov dl, REGISTER_NUM    ; inner height = 10 registers           
         call DrawFrame          ; Draw frame
 
         mov di, 2*160d - 16d    ; Set di to first pos in frame
@@ -91,17 +125,8 @@ New08hInt proc
         PrintRegMacro "ES" bp-7
         PrintRegMacro "SS" bp-8
 
-        pop ss es ds di si dx cx bx ; restore registers 
-        pop bp
-
-@@continue_chain:
-        pop ax
-
-        db 0eah         ; jmp far
-Old08Ofs dw 0           ; jmp Offset
-Old08Seg dw 0           ; jmp Segment
-
-endp New08hInt
+        ret
+endp
 
 ; -----------------------------------------------------------------------------
 ; Reg Print
