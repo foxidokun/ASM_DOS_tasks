@@ -4,9 +4,10 @@ locals @@
 .code
 org 100h
  
-HOTKEY_CODE equ 36h
+HOTKEY_CODE equ 36h     ; Right Shift
 COLOR equ 4eh
-REGISTER_NUM equ 10d
+REGISTER_NUM equ 10d    
+TEXT_WIDTH equ 7d       ;inner length = strlen("AX XXXX")      
 
 Start:  jmp Main
 
@@ -60,10 +61,20 @@ New08hInt proc
         mov dx, cs              ; set ds to our segment                 
         mov ds, dx                                                      
                                                                         
-        mov bx, 0b800h          ; es -> videomem                        
+        mov bx, offset draw_buf      ; es -> videomem
+        shr bx, 4     
+        add bx, dx              
         mov es, bx                                                      
                                                                         
         call DrawFrameWithRegs
+
+        mov bx, 0b800h      
+        mov es, bx
+        mov si, offset draw_buf + 160d - 2*(TEXT_WIDTH+2)
+        mov di, 160d - 2*(TEXT_WIDTH+2)
+        mov cl, TEXT_WIDTH + 2
+        mov dl, REGISTER_NUM + 2
+        call RenderToVidmem
 
         pop ss es ds di si dx cx bx ; restore registers 
         pop bp
@@ -103,16 +114,16 @@ PrintRegMacro macro NAME_H, REG_OFFSET
         mov dx, [ REG_OFFSET ]      ; Load ax
         mov bx, NAME_H
         call PrintReg
-        add di, 160d - 2 * 7d
+        add di, 160d - 2 * TEXT_WIDTH
 endm PrintByteMacro
 
 DrawFrameWithRegs proc
         push bp
         mov bp, sp
 
-        mov ah, COLOR           ; put color attr                        
-        mov di, 160d - 2*9d   ; Offset = line +linelen - frame width    
-        mov cx, 7d              ; inner length = strlen("AX XXXX")      
+        mov ah, COLOR                   ; put color attr                        
+        mov di, 160d - 2*(TEXT_WIDTH+2) ; Offset = line +linelen - frame width    
+        mov cx, TEXT_WIDTH              ; 
         mov si, offset color_scheme                                     
         mov dl, REGISTER_NUM    ; inner height = 10 registers           
         call DrawFrame          ; Draw frame
@@ -135,7 +146,7 @@ DrawFrameWithRegs proc
 endp
 
 ; -----------------------------------------------------------------------------
-; Reg Print
+; PrintReg
 ; di -- pointer to first pos
 ; ah -- color
 ; dx -- value
@@ -147,20 +158,64 @@ endp
 ; destroys: al bx (di)
 ; -----------------------------------------------------------------------------
 PrintReg proc
-        mov al, bh
+        mov al, bh      ; Print first letter
         stosw
-        mov al, bl
+        mov al, bl      ; Print second letter
         stosw
         
-        inc di
+        inc di          ; di += sizeof(" ") = 2 bytes
         inc di
 
         call PrintHex       ; Print ax 
         ret  
 endp
 
+; -----------------------------------------------------------------------------
+; RenderToVidmemory: copy lines from draw buffer to videomem
+; si -- top left corner offset
+; di -- videomem offset
+; cl -- length
+; dl -- height
+;
+; expects: es -> videomem
+; return: di points after last symbol
+; destroys: cx (dl di si)
+; -----------------------------------------------------------------------------
+RenderToVidmem proc
+        xor ch, ch
+
+@@str_loop:
+        mov dh, cl
+        rep movsw
+        mov cl, dh
+
+        add di, 160d - 2 * (TEXT_WIDTH + 2)
+        add si, 160d - 2 * (TEXT_WIDTH + 2)
+
+        dec dl
+        test dl, dl
+        jnz @@str_loop
+
+        ret
+endp RenderToVidmem
+
+
+; -----------------------------------------------------------------------------
+; Data Section
+; -----------------------------------------------------------------------------
 color_scheme         db 0dah, 0c4h, 0bfh, 0b3h, 0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
 IsOverlayActive      db 00h
+
+align 16
+draw_buf: db 160d * 25d dup(4eh)   ; three buf setup
+save_buf: db 160d * 25d dup(4eh)
+
+
+
+; ##############################################################################
+; SETUP SECTION 
+; Set handlers & exit
+; ##############################################################################
 
 HandlersCodeEnd:
 
