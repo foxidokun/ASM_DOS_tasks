@@ -8,6 +8,7 @@ HOTKEY_CODE equ 36h     ; Right Shift
 COLOR equ 4eh
 REGISTER_NUM equ 10d    
 TEXT_WIDTH equ 7d       ;inner length = strlen("AX XXXX")      
+FIRST_FRAME_POS = 160d - 2*(TEXT_WIDTH+2)
 
 Start:  jmp Main
 
@@ -29,6 +30,41 @@ New09hInt proc
         mov al, cs:[IsOverlayActive]
         xor al, 1
         mov cs:[IsOverlayActive], al
+
+        test al, al
+        jz @@restore_screen
+
+        push ds es cx di si
+        mov cx, cs
+        mov es, cx
+
+        mov cx, 0b800h
+        mov ds, cx
+        mov di, offset save_buf + FIRST_FRAME_POS
+        mov si, FIRST_FRAME_POS
+        mov cl, TEXT_WIDTH+2
+        mov dl, REGISTER_NUM+2
+
+        call CopyBetweenBuffers
+
+        pop si di cx es ds
+        jmp @@continue_chain
+
+@@restore_screen:
+        push ds es cx di si
+        mov cx, cs
+        mov ds, cx
+
+        mov cx, 0b800h
+        mov es, cx
+        mov si, offset save_buf + FIRST_FRAME_POS
+        mov di, FIRST_FRAME_POS
+        mov cl, TEXT_WIDTH+2
+        mov dl, REGISTER_NUM+2
+
+        call CopyBetweenBuffers
+
+        pop si di cx es ds
 
 @@continue_chain:
         pop ax
@@ -70,11 +106,11 @@ New08hInt proc
 
         mov bx, 0b800h      
         mov es, bx
-        mov si, offset draw_buf + 160d - 2*(TEXT_WIDTH+2)
-        mov di, 160d - 2*(TEXT_WIDTH+2)
+        mov si, offset draw_buf + FIRST_FRAME_POS
+        mov di, FIRST_FRAME_POS
         mov cl, TEXT_WIDTH + 2
         mov dl, REGISTER_NUM + 2
-        call RenderToVidmem
+        call CopyBetweenBuffers
 
         pop ss es ds di si dx cx bx ; restore registers 
         pop bp
@@ -91,6 +127,7 @@ endp New08hInt
 
 ; -----------------------------------------------------------------------------
 ; DrawFrameWithRegs
+; input: 
 ; input: (stack from bottom to top) ax bp bx cx dx si di ds es ss
 ; expects: es -->videomem
 ;       |   stack frame   |
@@ -114,7 +151,7 @@ PrintRegMacro macro NAME_H, REG_OFFSET
         mov dx, [ REG_OFFSET ]      ; Load ax
         mov bx, NAME_H
         call PrintReg
-        add di, 160d - 2 * TEXT_WIDTH
+        add di, 160d - 2*TEXT_WIDTH
 endm PrintByteMacro
 
 DrawFrameWithRegs proc
@@ -122,13 +159,13 @@ DrawFrameWithRegs proc
         mov bp, sp
 
         mov ah, COLOR                   ; put color attr                        
-        mov di, 160d - 2*(TEXT_WIDTH+2) ; Offset = line +linelen - frame width    
+        mov di, FIRST_FRAME_POS ; Offset = line +linelen - frame width    
         mov cx, TEXT_WIDTH              ; 
         mov si, offset color_scheme                                     
         mov dl, REGISTER_NUM    ; inner height = 10 registers           
         call DrawFrame          ; Draw frame
 
-        mov di, 2*160d - 16d    ; Set di to first pos in frame
+        mov di, FIRST_FRAME_POS + 160d + 2d ; Set di to first pos in frame
 
         PrintRegMacro "AX" bp+22 ; Print registers one by one
         PrintRegMacro "BX" bp+18
@@ -171,17 +208,16 @@ PrintReg proc
 endp
 
 ; -----------------------------------------------------------------------------
-; RenderToVidmemory: copy lines from draw buffer to videomem
-; si -- top left corner offset
-; di -- videomem offset
+; CopyBetweenBuffers: copy lines from one buffer to another
+; ds:si -- top left corner offset
+; es:di -- buffer offset
 ; cl -- length
 ; dl -- height
 ;
-; expects: es -> videomem
-; return: di points after last symbol
+; return: none
 ; destroys: cx (dl di si)
 ; -----------------------------------------------------------------------------
-RenderToVidmem proc
+CopyBetweenBuffers proc
         xor ch, ch
 
 @@str_loop:
@@ -189,15 +225,15 @@ RenderToVidmem proc
         rep movsw
         mov cl, dh
 
-        add di, 160d - 2 * (TEXT_WIDTH + 2)
-        add si, 160d - 2 * (TEXT_WIDTH + 2)
+        add di, FIRST_FRAME_POS
+        add si, FIRST_FRAME_POS
 
         dec dl
         test dl, dl
         jnz @@str_loop
 
         ret
-endp RenderToVidmem
+endp CopyBetweenBuffers
 
 
 ; -----------------------------------------------------------------------------
