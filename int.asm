@@ -97,11 +97,11 @@ New08hInt proc
         mov dx, cs              ; set ds to our segment                 
         mov ds, dx                                                      
                                                                         
-        mov bx, offset draw_buf      ; es -> videomem
-        shr bx, 4     
-        add bx, dx              
+        mov bx, cs      ; es -> videomem
         mov es, bx                                                      
-                                                                        
+
+        mov ah, COLOR
+        mov di, offset draw_buf + FIRST_FRAME_POS                                                
         call DrawFrameWithRegs
 
         mov bx, 0b800h      
@@ -127,7 +127,8 @@ endp New08hInt
 
 ; -----------------------------------------------------------------------------
 ; DrawFrameWithRegs
-; input: 
+; input: ah -- color attr
+;        di -- offset
 ; input: (stack from bottom to top) ax bp bx cx dx si di ds es ss
 ; expects: es -->videomem
 ;       |   stack frame   |
@@ -158,14 +159,14 @@ DrawFrameWithRegs proc
         push bp
         mov bp, sp
 
-        mov ah, COLOR                   ; put color attr                        
-        mov di, FIRST_FRAME_POS ; Offset = line +linelen - frame width    
+        push di
         mov cx, TEXT_WIDTH              ; 
         mov si, offset color_scheme                                     
         mov dl, REGISTER_NUM    ; inner height = 10 registers           
         call DrawFrame          ; Draw frame
 
-        mov di, FIRST_FRAME_POS + 160d + 2d ; Set di to first pos in frame
+        pop di
+        add di, 160d + 2d ; Set di to first pos in frame
 
         PrintRegMacro "AX" bp+22 ; Print registers one by one
         PrintRegMacro "BX" bp+18
@@ -242,10 +243,8 @@ endp CopyBetweenBuffers
 color_scheme         db 0dah, 0c4h, 0bfh, 0b3h, 0h, 0b3h, 0c0h, 0c4h, 0d9h, 4eh ; Сегменты LT, CT, RT, LM, CM, RM, LB, CB, RB + Color (left/center/right + top/middle/bottom)
 IsOverlayActive      db 00h
 
-align 16
 draw_buf: db 160d * 25d dup(4eh)   ; three buf setup
 save_buf: db 160d * 25d dup(4eh)
-
 
 
 ; ##############################################################################
