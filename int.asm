@@ -20,6 +20,11 @@ include lib\draw.asm
 ; -----------------------------------------------------------------------------
 ; New 09h Interrupt Handler
 ; -----------------------------------------------------------------------------
+; Check pressed key:
+; If it is HOTKEY => save/restore screen area & exit
+; Else => call original interrupt handler
+; -----------------------------------------------------------------------------
+
 New09hInt proc
         push ax
 
@@ -28,18 +33,18 @@ New09hInt proc
         cmp al, HOTKEY_CODE     ; compare pressed key with hotkey
         jne @@continue_chain   ; ignore interrupt if it is not hotkey
 
-        mov al, cs:[IsOverlayActive]
+        mov al, cs:[IsOverlayActive] ; Invert bool flag
         xor al, 1
         mov cs:[IsOverlayActive], al
 
         test al, al
         jz @@restore_screen
 
-        push ds es cx di si
+        push ds es cx di si    
+        
         mov cx, cs
         mov es, cx
-
-        mov cx, 0b800h
+        mov cx, 0b800h          ; Save current screnn to saved buff
         mov ds, cx
         mov di, offset save_buf + FIRST_FRAME_POS
         mov si, FIRST_FRAME_POS
@@ -53,27 +58,27 @@ New09hInt proc
 
 @@restore_screen:
         push ds es cx di si
-        mov cx, cs
+        
+        mov cx, cs      ; Set ds to current segment
         mov ds, cx
-
-        mov cx, 0b800h
+        mov cx, 0b800h  
         mov es, cx
         mov si, offset save_buf + FIRST_FRAME_POS
         mov di, FIRST_FRAME_POS
         mov cl, TEXT_WIDTH+2
         mov dl, REGISTER_NUM+2
 
-        call CopyBetweenBuffers
+        call CopyBetweenBuffers ; Restore screen from saved buff
 
         pop si di cx es ds
 
 @@ignore_key_and_exit:
-        in al, 61h
+        in al, 61h      ; Blink highest bit in keyboard port
         or al, 80h
         out 61h, al
         and al, not 80h
         out 61h, al
-        mov al, 20h
+        mov al, 20h     ; Restore interrupt controller
         out 20h, al
 
         pop ax
@@ -92,6 +97,9 @@ endp New09hInt
 ; -----------------------------------------------------------------------------
 ; New 08h Interrupt Handler
 ; -----------------------------------------------------------------------------
+; Print interrupted progmram's regs with funny frame if activation flag is true
+; Then call original interrupt handler
+; -----------------------------------------------------------------------------
 
 New08hInt proc
         cli
@@ -105,18 +113,18 @@ New08hInt proc
         push bp 
         mov bp, sp
         push bx cx dx si di ds es ss ; save registers                   
-                                                                        
+
         mov dx, cs              ; set ds to our segment                 
         mov ds, dx                                                      
-                                                                        
-        mov bx, cs      ; es -> videomem
+
+        mov bx, cs              ; es -> videomem
         mov es, bx                                                      
 
-        mov ah, COLOR
+        mov ah, COLOR           ; Draw frame into intermediate buffer
         mov di, offset draw_buf + FIRST_FRAME_POS                                                
         call DrawFrameWithRegs
 
-        mov bx, 0b800h      
+        mov bx, 0b800h          ; Copy internal buffer to screen
         mov es, bx
         mov si, offset draw_buf + FIRST_FRAME_POS
         mov di, FIRST_FRAME_POS
@@ -130,7 +138,6 @@ New08hInt proc
         @@continue_chain:
         pop ax
 
-        sti
         db 0eah         ; jmp far
 Old08Ofs dw 0           ; jmp Offset
 Old08Seg dw 0           ; jmp Segment
@@ -138,11 +145,14 @@ Old08Seg dw 0           ; jmp Segment
 endp New08hInt
 
 ; -----------------------------------------------------------------------------
-; DrawFrameWithRegs
+; DrawFrameWithRegs: Draw frame into es:di buffer with registers name & value
+; -----------------------------------------------------------------------------
 ; input: ah -- color attr
-;        di -- offset
+;        es:di -- offset
 ; input: (stack from bottom to top) ax bp bx cx dx si di ds es ss
+; -----------------------------------------------------------------------------
 ; expects: es -->videomem
+; -----------------------------------------------------------------------------
 ;       |   stack frame   |
 ;       -------------------
 ;       | bp+22 | ax       |
@@ -157,7 +167,7 @@ endp New08hInt
 ;       | bp+4  | ss       |
 ;       | bp+2  | ret addr |
 ;       | bp    | caller bp|
-;       -------------------
+;       --------------------
 ; -----------------------------------------------------------------------------
 ; Print Reg Macro: load args + call PrintReg
 PrintRegMacro macro NAME_H, REG_OFFSET
@@ -196,15 +206,18 @@ DrawFrameWithRegs proc
 endp
 
 ; -----------------------------------------------------------------------------
-; PrintReg
-; di -- pointer to first pos
+; PrintReg: Print register to es:di with given color
+; -----------------------------------------------------------------------------
 ; ah -- color
+; bh -- First reg name's letter
+; bl -- Second reg name's letter
 ; dx -- value
-; bh -- First letter
-; bl -- Second letter
-; 
+; di -- pointer to first pos
+; -----------------------------------------------------------------------------
 ; expects: es -> videomem
+; -----------------------------------------------------------------------------
 ; return: di points after last symbol
+; -----------------------------------------------------------------------------
 ; destroys: al bx (di)
 ; -----------------------------------------------------------------------------
 PrintReg proc
@@ -221,13 +234,15 @@ PrintReg proc
 endp
 
 ; -----------------------------------------------------------------------------
-; CopyBetweenBuffers: copy lines from one buffer to another
+; CopyBetweenBuffers: copy screen area from one frame buffer to another
+; -----------------------------------------------------------------------------
 ; ds:si -- top left corner offset
 ; es:di -- buffer offset
 ; cl -- length
 ; dl -- height
-;
+; -----------------------------------------------------------------------------
 ; return: none
+; -----------------------------------------------------------------------------
 ; destroys: cx (dl di si)
 ; -----------------------------------------------------------------------------
 CopyBetweenBuffers proc
@@ -271,22 +286,22 @@ Main:
         mov es, bx
         mov bx, 8*4             ; Bx = offset (int 8h)
 
-        mov ax, es:[bx]         ; Save offset of old handler
+        mov ax, es:[bx]         ; Save offset of old 08h handler
         mov [Old08Ofs], ax
-        mov ax, es:[bx+02]      ; Save segment of old handler
+        mov ax, es:[bx+02]      ; Save segment of old 08h handler
         mov [Old08Seg], ax
 
-        mov ax, es:[bx+04]         ; Save offset of old handler
+        mov ax, es:[bx+04]              ; Save offset of old 09h handler
         mov [Old09Ofs], ax
-        mov ax, es:[bx+06]      ; Save segment of old handler
+        mov ax, es:[bx+06]              ; Save segment of old 09h handler
         mov [Old09Seg], ax
 
-        cli                     ; Write new offset + segment
-        mov es:[bx], offset New08hInt
+        cli                             ; Write new offsets + segments
+        mov es:[bx], offset New08hInt   ; 08h offset
         mov ax, cs
-        mov es:[bx+2], ax
-        mov es:[bx+6], ax
-        mov es:[bx+4], offset New09hInt
+        mov es:[bx+2], ax               ; 08h segment
+        mov es:[bx+6], ax               ; 09h segment
+        mov es:[bx+4], offset New09hInt ; 09h offset
         sti
 
         mov ax, 3100h                   ; Exit without releasing dx pages of memory
