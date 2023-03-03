@@ -30,7 +30,7 @@ New09hInt proc
 
         in al, 60h    ; read scan code from port 60h
         
-        cmp al, HOTKEY_CODE     ; compare pressed key with hotkey
+        cmp al, HOTKEY_CODE    ; compare pressed scan code with hotkey
         jne @@continue_chain   ; ignore interrupt if it is not hotkey
 
         mov al, cs:[IsOverlayActive] ; Invert bool flag
@@ -38,20 +38,20 @@ New09hInt proc
         mov cs:[IsOverlayActive], al
 
         test al, al
-        jz @@restore_screen
+        jz @@restore_screen ; Restore screen if flag is false
 
         push ds es cx di si    
         
-        mov cx, cs
-        mov es, cx
-        mov cx, 0b800h          ; Save current screnn to saved buff
-        mov ds, cx
+        mov cx, cs ; Prepare args for CopyBetweenBuffers
+        mov es, cx ; es = current segment because of save_buf
+        mov cx, 0b800h          
+        mov ds, cx ; ds = videomem because we are copying from screen
         mov di, offset save_buf + FIRST_FRAME_POS
         mov si, FIRST_FRAME_POS
-        mov cl, TEXT_WIDTH+2
-        mov dl, REGISTER_NUM+2
+        mov cl, TEXT_WIDTH+2    ; +2 frame borders
+        mov dl, REGISTER_NUM+2  ; +2 frame borders
 
-        call CopyBetweenBuffers
+        call CopyBetweenBuffers ; Save current screnn to saved buff
 
         pop si di cx es ds
         jmp @@ignore_key_and_exit
@@ -61,12 +61,12 @@ New09hInt proc
         
         mov cx, cs      ; Set ds to current segment
         mov ds, cx
-        mov cx, 0b800h  
-        mov es, cx
-        mov si, offset save_buf + FIRST_FRAME_POS
-        mov di, FIRST_FRAME_POS
-        mov cl, TEXT_WIDTH+2
-        mov dl, REGISTER_NUM+2
+        mov cx, 0b800h
+        mov es, cx      ; es --> videomem
+        mov si, offset save_buf + FIRST_FRAME_POS ; set src offsets
+        mov di, FIRST_FRAME_POS                   ; set dst offset
+        mov cl, TEXT_WIDTH+2                      ; +2 frame borders
+        mov dl, REGISTER_NUM+2                    ; +2 frame borders
 
         call CopyBetweenBuffers ; Restore screen from saved buff
 
@@ -128,8 +128,8 @@ New08hInt proc
         mov es, bx
         mov si, offset draw_buf + FIRST_FRAME_POS
         mov di, FIRST_FRAME_POS
-        mov cl, TEXT_WIDTH + 2
-        mov dl, REGISTER_NUM + 2
+        mov cl, TEXT_WIDTH + 2   ; +2 frame borders 
+        mov dl, REGISTER_NUM + 2 ; +2 frame borders
         call CopyBetweenBuffers
 
         pop ss es ds di si dx cx bx ; restore registers 
@@ -182,8 +182,8 @@ DrawFrameWithRegs proc
         mov bp, sp
 
         push di
-        mov cx, TEXT_WIDTH              ; 
-        mov si, offset color_scheme                                     
+        mov cx, TEXT_WIDTH
+        mov si, offset color_scheme
         mov dl, REGISTER_NUM    ; inner height = 10 registers           
         call DrawFrame          ; Draw frame
 
@@ -229,7 +229,7 @@ PrintReg proc
         inc di          ; di += sizeof(" ") = 2 bytes
         inc di
 
-        call PrintHex       ; Print ax 
+        call PrintHex   ; Print ax 
         ret  
 endp
 
@@ -250,15 +250,15 @@ CopyBetweenBuffers proc
 
 @@str_loop:
         mov dh, cl
-        rep movsw
+        rep movsw  ; Copy one line
         mov cl, dh
 
-        add di, OFFSET_BETWEEN_LINES
+        add di, OFFSET_BETWEEN_LINES ; move cursor to new line
         add si, OFFSET_BETWEEN_LINES
 
         dec dl
         test dl, dl
-        jnz @@str_loop
+        jnz @@str_loop ; iterate for next line
 
         ret
 endp CopyBetweenBuffers
