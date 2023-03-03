@@ -4,7 +4,8 @@ locals @@
 .code
 org 100h
  
-HOTKEY_CODE equ 36h     ; Right Shift
+HOTKEY_CODE equ 36h          ; Right Shift press
+HOTKEY_CODE_RELEASE equ 0b6h ; Right Shift release
 COLOR equ 4eh
 REGISTER_NUM equ 10d    
 TEXT_WIDTH equ 7d       ;inner length = strlen("AX XXXX")      
@@ -30,6 +31,8 @@ New09hInt proc
 
         in al, 60h    ; read scan code from port 60h
         
+        cmp al, HOTKEY_CODE_RELEASE
+        je @@ignore_key_and_exit        ; Ignore if hotkey is released
         cmp al, HOTKEY_CODE    ; compare pressed scan code with hotkey
         jne @@continue_chain   ; ignore interrupt if it is not hotkey
 
