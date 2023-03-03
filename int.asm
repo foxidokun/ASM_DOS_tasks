@@ -353,10 +353,10 @@ Main:
         mov [Old09Seg], ax
 
         cli                             ; Write new offsets + segments
-        mov es:[bx], offset New08hInt   ; 08h offset
         mov ax, cs
         mov es:[bx+2], ax               ; 08h segment
         mov es:[bx+6], ax               ; 09h segment
+        mov es:[bx], offset New08hInt   ; 08h offset
         mov es:[bx+4], offset New09hInt ; 09h offset
         sti
 
