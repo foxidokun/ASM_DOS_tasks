@@ -299,9 +299,14 @@ UpdateSavedBuffer proc
         mov cx, 2*TEXT_WIDTH+4
     
         @@update_width_loop:
-            mov dx, es:[di]
+            mov dl, es:[di]
+            mov dh, cs:[si]
+
+            cmp dl, dh
+            je @@not_update
             mov cs:[bx], dx
 
+            @@not_update:
             inc bx
             inc di
             inc si
