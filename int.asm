@@ -123,6 +123,9 @@ New08hInt proc
         mov bx, cs              ; es -> videomem
         mov es, bx                                                      
 
+        mov bx, offset save_buf + FIRST_FRAME_POS
+        mov di, FIRST_FRAME_POS
+        mov si, offset draw_buf + FIRST_FRAME_POS
         call UpdateSavedBuffer
 
         mov ah, COLOR           ; Draw frame into intermediate buffer
@@ -283,14 +286,10 @@ endp CopyBetweenBuffers
 ; destroys:
 ; -----------------------------------------------------------------------------
 UpdateSavedBuffer proc
-        push ax bx cx dx si di es
+        push ax cx dx es
 
-        mov bx, 0b800h
-        mov es, bx
-
-        mov bx, offset save_buf + FIRST_FRAME_POS
-        mov di, FIRST_FRAME_POS
-        mov si, offset draw_buf + FIRST_FRAME_POS
+        mov dx, 0b800h
+        mov es, dx
 
         xor cx, cx
     
@@ -319,7 +318,7 @@ UpdateSavedBuffer proc
         test ax, ax
         jnz @@update_height_loop
 
-        pop es di si dx cx bx ax
+        pop es dx cx ax
         ret
 endp UpdateSavedBuffer
 
