@@ -125,8 +125,8 @@ New08hInt proc
         mov bx, offset save_buf + FIRST_FRAME_POS
         mov di, FIRST_FRAME_POS
         mov si, offset draw_buf + FIRST_FRAME_POS
-        mov ah, REGISTER_NUM+2 ; +2 frame borders
-        mov cx, TEXT_WIDTH+2   ; +2
+        mov ah, REGISTER_NUM+2      ; +2 frame borders
+        mov al, 2*(TEXT_WIDTH+2)    ; +2 frame borders
         call UpdateSavedBuffer
 
         mov bx, cs              ; es -> videomem
@@ -279,34 +279,36 @@ endp CopyBetweenBuffers
 ; UpdateSavedBuffer: save diff(videomem, draw_buf) to save_buf
 ; -----------------------------------------------------------------------------
 ; ah    -- height (in rows)
-; cx    -- length (in bytes)
+; al    -- length (in bytes)
 ; es:di -- pointer to top left corner in videomem
 ; ds:bx -- pointer to top left corner in save_buf
 ; ds:si -- pointer to top left corner in draw_buf
 ; -----------------------------------------------------------------------------
 ; return: none
 ; -----------------------------------------------------------------------------
-; destroys:
+; destroys: dx cl (ax bx si di)
 ; -----------------------------------------------------------------------------
 UpdateSavedBuffer proc
-        push dx
-    
+        mov cl, al ; save al
+
     @@update_height_loop:
-        mov cx, 2*TEXT_WIDTH+4
-    
+        mov al, cl
         @@update_width_loop:
             mov dl, es:[di]
             mov dh, cs:[si]
 
             cmp dl, dh
             je @@not_update
-            mov cs:[bx], dx
+            mov cs:[bx], dl
 
             @@not_update:
             inc bx
             inc di
             inc si
-        loop @@update_width_loop
+
+            dec al
+            test al, al
+        jnz @@update_width_loop
         
         add bx, OFFSET_BETWEEN_LINES
         add si, OFFSET_BETWEEN_LINES
@@ -315,7 +317,6 @@ UpdateSavedBuffer proc
         test ah, ah
         jnz @@update_height_loop
 
-        pop dx
         ret
 endp UpdateSavedBuffer
 
