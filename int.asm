@@ -108,9 +108,8 @@ New08hInt proc
         cli
         push ax
 
-        mov al, cs:[IsOverlayActive]
-        test al, al
-        jz @@continue_chain     ; ignore interrupt if not activated
+        cmp cs:[IsOverlayActive], 0
+        je @@continue_chain     ; ignore interrupt if not activated
 
 @@active:
         push bp 
@@ -236,7 +235,7 @@ PrintReg proc
         stosw
         mov al, bl      ; Print second letter
         stosw
-        
+
         inc di          ; di += sizeof(" ") = 2 bytes
         inc di
 
@@ -295,22 +294,22 @@ UpdateSavedBuffer proc
         mov al, cl
         @@update_width_loop:
             mov dl, es:[di]
-            mov dh, cs:[si]
+            mov dh, [si]
 
             cmp dl, dh
-            je @@not_update
-            mov cs:[bx], dl
+            je @@not_update ; copy symbol to diff if it's changed
+            mov [bx], dl
 
             @@not_update:
-            inc bx
+            inc bx  ; inc offsets
             inc di
             inc si
 
             dec al
             test al, al
         jnz @@update_width_loop
-        
-        add bx, OFFSET_BETWEEN_LINES
+
+        add bx, OFFSET_BETWEEN_LINES ; move cursors to new line
         add si, OFFSET_BETWEEN_LINES
         add di, OFFSET_BETWEEN_LINES
         dec ah
