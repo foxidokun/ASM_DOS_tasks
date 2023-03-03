@@ -8,7 +8,8 @@ HOTKEY_CODE equ 36h     ; Right Shift
 COLOR equ 4eh
 REGISTER_NUM equ 10d    
 TEXT_WIDTH equ 7d       ;inner length = strlen("AX XXXX")      
-FIRST_FRAME_POS = 160d - 2*(TEXT_WIDTH+2)
+FIRST_FRAME_POS = 0d
+OFFSET_BETWEEN_LINES = 160d - 2*(TEXT_WIDTH+2) ; start of new line - end of old line
 
 Start:  jmp Main
 
@@ -48,7 +49,7 @@ New09hInt proc
         call CopyBetweenBuffers
 
         pop si di cx es ds
-        jmp @@continue_chain
+        jmp @@ignore_key_and_exit
 
 @@restore_screen:
         push ds es cx di si
@@ -65,6 +66,18 @@ New09hInt proc
         call CopyBetweenBuffers
 
         pop si di cx es ds
+
+@@ignore_key_and_exit:
+        in al, 61h
+        or al, 80h
+        out 61h, al
+        and al, not 80h
+        out 61h, al
+        mov al, 20h
+        out 20h, al
+
+        pop ax
+        iret
 
 @@continue_chain:
         pop ax
@@ -86,8 +99,7 @@ New08hInt proc
 
         mov al, cs:[IsOverlayActive]
         test al, al
-        jnz @@active     ; ignore interrupt if not activated
-        jmp cs:@@continue_chain ; long jump needed
+        jz @@continue_chain     ; ignore interrupt if not activated
 
 @@active:
         push bp 
@@ -115,7 +127,7 @@ New08hInt proc
         pop ss es ds di si dx cx bx ; restore registers 
         pop bp
 
-@@continue_chain:
+        @@continue_chain:
         pop ax
 
         sti
@@ -226,8 +238,8 @@ CopyBetweenBuffers proc
         rep movsw
         mov cl, dh
 
-        add di, FIRST_FRAME_POS
-        add si, FIRST_FRAME_POS
+        add di, OFFSET_BETWEEN_LINES
+        add si, OFFSET_BETWEEN_LINES
 
         dec dl
         test dl, dl
