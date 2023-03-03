@@ -120,12 +120,13 @@ New08hInt proc
         mov dx, cs              ; set ds to our segment                 
         mov ds, dx                                                      
 
-
         mov bx, 0b800h
         mov es, bx
         mov bx, offset save_buf + FIRST_FRAME_POS
         mov di, FIRST_FRAME_POS
         mov si, offset draw_buf + FIRST_FRAME_POS
+        mov ah, REGISTER_NUM+2 ; +2 frame borders
+        mov cx, TEXT_WIDTH+2   ; +2
         call UpdateSavedBuffer
 
         mov bx, cs              ; es -> videomem
@@ -277,7 +278,7 @@ endp CopyBetweenBuffers
 ; -----------------------------------------------------------------------------
 ; UpdateSavedBuffer: save diff(videomem, draw_buf) to save_buf
 ; -----------------------------------------------------------------------------
-; ax    -- height (in rows)
+; ah    -- height (in rows)
 ; cx    -- length (in bytes)
 ; es:di -- pointer to top left corner in videomem
 ; ds:bx -- pointer to top left corner in save_buf
@@ -288,10 +289,8 @@ endp CopyBetweenBuffers
 ; destroys:
 ; -----------------------------------------------------------------------------
 UpdateSavedBuffer proc
-        push ax cx dx
-        xor cx, cx
+        push dx
     
-        mov ax, REGISTER_NUM+2
     @@update_height_loop:
         mov cx, 2*TEXT_WIDTH+4
     
@@ -312,11 +311,11 @@ UpdateSavedBuffer proc
         add bx, OFFSET_BETWEEN_LINES
         add si, OFFSET_BETWEEN_LINES
         add di, OFFSET_BETWEEN_LINES
-        dec ax
-        test ax, ax
+        dec ah
+        test ah, ah
         jnz @@update_height_loop
 
-        pop dx cx ax
+        pop dx
         ret
 endp UpdateSavedBuffer
 
