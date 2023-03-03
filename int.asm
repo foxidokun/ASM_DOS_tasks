@@ -120,14 +120,16 @@ New08hInt proc
         mov dx, cs              ; set ds to our segment                 
         mov ds, dx                                                      
 
-        mov bx, cs              ; es -> videomem
-        mov es, bx                                                      
 
+        mov bx, 0b800h
+        mov es, bx
         mov bx, offset save_buf + FIRST_FRAME_POS
         mov di, FIRST_FRAME_POS
         mov si, offset draw_buf + FIRST_FRAME_POS
         call UpdateSavedBuffer
 
+        mov bx, cs              ; es -> videomem
+        mov es, bx      
         mov ah, COLOR           ; Draw frame into intermediate buffer
         mov di, offset draw_buf + FIRST_FRAME_POS                                                
         call DrawFrameWithRegs
@@ -286,11 +288,7 @@ endp CopyBetweenBuffers
 ; destroys:
 ; -----------------------------------------------------------------------------
 UpdateSavedBuffer proc
-        push ax cx dx es
-
-        mov dx, 0b800h
-        mov es, dx
-
+        push ax cx dx
         xor cx, cx
     
         mov ax, REGISTER_NUM+2
@@ -318,7 +316,7 @@ UpdateSavedBuffer proc
         test ax, ax
         jnz @@update_height_loop
 
-        pop es dx cx ax
+        pop dx cx ax
         ret
 endp UpdateSavedBuffer
 
