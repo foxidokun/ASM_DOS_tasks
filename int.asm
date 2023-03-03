@@ -123,6 +123,8 @@ New08hInt proc
         mov bx, cs              ; es -> videomem
         mov es, bx                                                      
 
+        call UpdateSavedBuffer
+
         mov ah, COLOR           ; Draw frame into intermediate buffer
         mov di, offset draw_buf + FIRST_FRAME_POS                                                
         call DrawFrameWithRegs
@@ -265,6 +267,56 @@ CopyBetweenBuffers proc
 
         ret
 endp CopyBetweenBuffers
+
+
+; -----------------------------------------------------------------------------
+; UpdateSavedBuffer: save diff(videomem, draw_buf) to save_buf
+; -----------------------------------------------------------------------------
+; ax    -- height (in rows)
+; cx    -- length (in bytes)
+; es:di -- pointer to top left corner in videomem
+; ds:bx -- pointer to top left corner in save_buf
+; ds:si -- pointer to top left corner in draw_buf
+; -----------------------------------------------------------------------------
+; return: none
+; -----------------------------------------------------------------------------
+; destroys:
+; -----------------------------------------------------------------------------
+UpdateSavedBuffer proc
+        push ax bx cx dx si di es
+
+        mov bx, 0b800h
+        mov es, bx
+
+        mov bx, offset save_buf + FIRST_FRAME_POS
+        mov di, FIRST_FRAME_POS
+        mov si, offset draw_buf + FIRST_FRAME_POS
+
+        xor cx, cx
+    
+        mov ax, REGISTER_NUM+2
+    @@update_height_loop:
+        mov cx, 2*TEXT_WIDTH+4
+    
+        @@update_width_loop:
+            mov dx, es:[di]
+            mov cs:[bx], dx
+
+            inc bx
+            inc di
+            inc si
+        loop @@update_width_loop
+        
+        add bx, OFFSET_BETWEEN_LINES
+        add si, OFFSET_BETWEEN_LINES
+        add di, OFFSET_BETWEEN_LINES
+        dec ax
+        test ax, ax
+        jnz @@update_height_loop
+
+        pop es di si dx cx bx ax
+        ret
+endp UpdateSavedBuffer
 
 
 ; -----------------------------------------------------------------------------
