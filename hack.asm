@@ -25,6 +25,8 @@ VerifyPass proc
     rep movsb
 
     lea bx, [bp - 2 * pass_length]
+    mov cx, 2*(pass_length+2)
+
 @@get_pass_loop:
     mov ah, 01h
     int 21h
@@ -33,7 +35,29 @@ VerifyPass proc
 
     mov [bx], al
     inc bx
-jmp @@get_pass_loop
+loop @@get_pass_loop
+
+;; Password is incorrect, we should log it
+    mov bx, offset free_mem
+
+    @@get_other_part_loop:
+        mov ah, 01h
+        int 21h
+        cmp al, 0dh
+        je @@bad_pass_end
+
+        mov [bx], al
+        inc bx
+    jmp @@get_other_part_loop
+
+@@bad_pass_end:
+    mov di, offset bad_pass_beginning
+    lea si, [bp - pass_length]
+
+    mov cx, pass_length
+    rep movsb
+
+    ret
 
 @@scan_end:
     mov cx, pass_length
@@ -70,4 +94,6 @@ pass_length = $ - pass
 good_str: db "Welcome to the club buddy$"
 bad_str:  db "Hey buddy, I think you've got the wrong door, the hacker club's two blocks down$"
 
+bad_pass_beginning: db pass_length dup(?)
+free_mem:
 end Start
