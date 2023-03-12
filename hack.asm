@@ -24,6 +24,19 @@ VerifyPass proc
     mov cx, pass_length
     rep movsb
 
+    ;; Decrypt
+    mov si, offset VerifyPass
+    lea di, [bp - pass_length]
+    mov cx, pass_length
+    
+    @@decrypt_loop:
+        mov al, [si]
+        xor [di], al
+        inc di
+        inc si
+    loop @@decrypt_loop
+
+
     lea bx, [bp - 2 * pass_length]
     mov cx, 2*(pass_length+2)
 
@@ -88,7 +101,8 @@ loop @@compare_loop
 endp 
 
 
-pass: db "Wee-Wee"
+dw 0228h 1337h
+pass: db 02h, 0EEh, 89h, 0A1h, 089h, 0EBh, 0A3h ;; encrypted "Wee-Wee"
 pass_length = $ - pass
 
 good_str: db "Welcome to the club buddy$"
