@@ -1,4 +1,8 @@
+*/.idea
+*/CMakeLists.txt
+*.com
+*/cmake-build-debug
 *.COM
 *.OBJ
-*.LST
 *.MAP
+*.LST
